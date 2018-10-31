@@ -1,0 +1,8 @@
+<?xml version="1.4"?>
+
+<launch>
+
+<node name="car_manager" pkg="car_iot" type="car_iot" output="screen" respawn="false"> 
+	<param name="cfg" value="$(find car_iot)/config" />
+</node>
+</launch>
