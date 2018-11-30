@@ -321,9 +321,10 @@ int main(int argc, char **argv)
     ros::NodeHandle nh_;
     ros::NodeHandle priv_nh("~");
 
-    std::string cfg_path,mqtt_url,baseUrl,imei;
+    std::string cfg_path,mqtt_url,baseUrl,imei,map_id;
     priv_nh.param("cfg", cfg_path, std::string(""));
     priv_nh.param("imei", imei, std::string(""));
+    priv_nh.param("map_id", map_id, std::string(""));
     priv_nh.param("mqtt_url", mqtt_url, std::string("tcp://localhost:1883"));
     priv_nh.param("https_url", baseUrl, std::string("127.0.0.1:12345"));
     
@@ -367,13 +368,15 @@ int main(int argc, char **argv)
 
     iot_cli->Init(downloadPath,storePath,baseUrl,imei);
 
- 
-    std::string id_data = "{\"imei\": \"ceb7ce8a-c82a-491c-9822-0847d4f71cdf\"}";
+    char temp[100];
+    sprintf(temp,"{\"imei\": \"%s\"}",imei.c_str());
+    std::string id_data = temp;//"{\"imei\": \"ceb7ce8a-c82a-491c-9822-0847d4f71cdf\"}";
+
     std::string newTenantToken;
     int ret = iot_cli->AuthDevice(id_data, tenant_token, newTenantToken);
     if(ret == 0) {
         std::cout <<"AuthDevice Succeed!\n" << newTenantToken << std::endl;
-        iot_cli->DownLoadMap("0788e991-a7c0-4ecc-a290-cc1dc2cf6027");
+        iot_cli->DownLoadMap(map_id);
     } else {
         std::cout <<"AuthDevice Failed!\n";    
         delete iot_cli;

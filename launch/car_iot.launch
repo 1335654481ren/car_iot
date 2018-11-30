@@ -5,6 +5,7 @@
 <node name="car_manager" pkg="car_iot" type="car_iot" output="screen" respawn="false"> 
 	<param name="cfg" value="$(find car_iot)/config" />
 	<param name="imei" value="ceb7ce8a-c82a-491c-9822-0847d4f71cdf" />
+	<param name="map_id" value="0788e991-a7c0-4ecc-a290-cc1dc2cf6027" />
 	<param name="mqtt_url" value="42.62.85.20:9448" />
 	<param name="https_url" value="http://42.62.85.20:443/api/v1/device" />
 </node>
