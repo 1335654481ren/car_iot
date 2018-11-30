@@ -37,6 +37,26 @@ bool iot::HobotUtils::DirExists(const std::string &dir) {
   closedir(d);
   return true;
 }
+//字符串分割函数
+std::vector<std::string> iot::HobotUtils::split(std::string str,std::string pattern)
+{
+  std::string::size_type pos;
+  std::vector<std::string> result;
+  str+=pattern;//扩展字符串以方便操作
+  int size=str.size();
+ 
+  for(int i=0; i<size; i++)
+  {
+    pos=str.find(pattern,i);
+    if(pos<size)
+    {
+      std::string s=str.substr(i,pos-i);
+      result.push_back(s);
+      i=pos+pattern.size()-1;
+    }
+  }
+  return result;
+}
 
 int iot::HobotUtils::SignData(const std::string &privateKey,
                               const std::string &encKey,
@@ -100,6 +120,29 @@ int iot::HobotUtils::SignData(const std::string &privateKey,
   return iot::HobotUtils::Base64Encode(sigret, siglen, responseData);
 }
 
+std::string iot::HobotUtils::Base64Decode(const std::string &base64)
+{
+    std::string ascii;
+
+    // Resize ascii, however, the size is a up to two bytes too large.
+    ascii.resize((6 * base64.size()) / 8);
+    BIO *b64, *bio;
+
+    b64 = BIO_new(BIO_f_base64());
+    BIO_set_flags(b64, BIO_FLAGS_BASE64_NO_NL);
+    bio = BIO_new_mem_buf(&base64[0], static_cast<int>(base64.size()));
+    bio = BIO_push(b64, bio);
+
+    auto decoded_length = BIO_read(bio, &ascii[0], static_cast<int>(ascii.size()));
+    if(decoded_length > 0)
+      ascii.resize(static_cast<size_t>(decoded_length));
+    else
+      ascii.clear();
+
+    BIO_free_all(b64);
+
+    return ascii;
+}
 int iot::HobotUtils::Base64Encode(const unsigned char *input, int length,
                                   std::string &output) {
   BIO *bmem = NULL;

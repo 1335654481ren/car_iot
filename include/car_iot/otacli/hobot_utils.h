@@ -8,7 +8,9 @@
 
 #include <fstream>
 #include <string>
-
+#include <iostream>
+#include <vector>
+ 
 namespace iot {
 class HobotUtils {
  public:
@@ -16,14 +18,15 @@ class HobotUtils {
     std::ifstream test_stream(fname);
     return test_stream.good();
   }
+  //字符串分割函数
+  static std::vector<std::string> split(std::string str,std::string pattern);
   static bool DirExists(const std::string &dir);
   static int SignData(const std::string &privateKey, const std::string &encKey,
                       const std::string &rquestData, const std::string &hashAlg,
                       std::string &responseData);
 
-  static int Base64Encode(const unsigned char *input, int length,
-                          std::string &output);
-
+  static int Base64Encode(const unsigned char *input, int length,std::string &output);
+  static std::string Base64Decode(const std::string &base64);
   static int GenRsaKeyPair(const std::string &priKeyPath,
                            const std::string &pubKeyPath,
                            const std::string &encKey, unsigned int nbits);

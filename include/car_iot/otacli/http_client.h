@@ -124,7 +124,9 @@ class HttpClient {
   * @param localPath, 下载后保存地址
   */
   int HttpDownload(const std::string &url, const std::string &localPath);
-
+  
+  std::string get_device_id(){return device_id;}
+  
   ~HttpClient(){};
 
  private:
@@ -136,21 +138,27 @@ class HttpClient {
   static int XferinfoCallback(void *pParam, curl_off_t dltotal,
                               curl_off_t dlnow, curl_off_t ultotal,
                               curl_off_t ulnow);
-
+  static size_t header_callback(char *buffer, size_t size, size_t nitems, void *userdata);
   int CreateHttpTransport();
+
   int SetupHttpTransport(const std::string &url, const std::string &requestData,
                          const std::string &cafilePath, std::string &resp,
                          HttpMethod method);
   int PerformHttpTransport(long *statusCode);
   int CleanupHttpTransport();
-
- private:
+  void dealwith_cookies(CURL *curl);
+public:
+  int SetDealHeader(bool flag);
+private:
+  bool deal_header;
   CURL *curl_;
   curl_slist *curl_headers_;
   std::string proxy_host_;
   std::string proxy_auth_;
   void *process_cb_param_;
   DownloadCallback *process_cb_;
+ public:
+  std::string device_id;
 };
 }  // namespace mercurius
 #endif  // OTACLI_INCLUDE_OTACLI_HTTP_CLIENT_H_

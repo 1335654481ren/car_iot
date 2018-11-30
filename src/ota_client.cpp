@@ -4,7 +4,7 @@
 // iot OTA related APIs
 //
 #include "otacli/ota_client.h"
-
+#include <stdio.h>
 #include <string.h>
 #include <fstream>
 #include <iostream>
@@ -22,7 +22,11 @@ iot::OtaClient::OtaClient() { initd_ = false; }
 
 int iot::OtaClient::Init(const std::string &downLoadDir,
                          const std::string &authInfoStoreDir,
-                         const std::string &baseUrl) {
+                         const std::string &baseUrl,const std::string &imei) {
+  if( imei.empty() == true){
+     return static_cast<int>(ErrorCode::kInitError);
+  }
+  imei_ = imei;
   authfile_path_ = authInfoStoreDir;
   if (authfile_path_.back() != '/') {
     authfile_path_.push_back('/');
@@ -45,13 +49,17 @@ int iot::OtaClient::Init(const std::string &downLoadDir,
   } else {
     base_url_ = baseUrl;
   }
+
   // do only once
   curl_global_init(CURL_GLOBAL_DEFAULT);
   initd_ = true;
   return static_cast<int>(ErrorCode::kSuccess);
 }
 
-iot::OtaClient::~OtaClient() { curl_global_cleanup(); }
+iot::OtaClient::~OtaClient() 
+{
+    curl_global_cleanup();
+}
 
 int iot::OtaClient::AuthDevice(const std::string &idData,
                                const std::string &tenantToken,
@@ -96,19 +104,23 @@ int iot::OtaClient::AuthDevice(const std::string &id_data,
   long status_code = 0;
   std::vector<std::string> curl_headers;
   std::string curl_header = "x-men-signature: " + signature;
+  std::string imei_header = "X-Imei: " + imei_;
   curl_headers.push_back("Content-Type: application/json");
   curl_headers.push_back(curl_header);
+  curl_headers.push_back(imei_header);
   std::string url = base_url_ + kAuth;
   client.set_curl_headers(curl_headers);
   std::cout << "url:" << url << "\n";
-  std::cout << "JSON:" << request_data << "\n";
-  std::cout << "X-HOBOT-Signature:" << signature << "\n";
-  ret = client.HttpsPost(url, request_data, kCaPath, resp, &status_code);
+  //std::cout << "JSON:" << request_data << "\n";
+  //std::cout << "X-HOBOT-Signature:" << signature << "\n";
+  client.SetDealHeader(true);
+  //ret = client.HttpsPost(url, request_data, kCaPath, resp, &status_code);
+  ret = client.HttpPost(url, request_data, resp, &status_code);
   if (ret != 0 || (status_code != 200 && status_code != 403)) {
     std::cout << "ret = " << ret << ". status_code = " << status_code << "\n";
     return ret;
   }
-  std::cout << "resp :" << resp << std::endl;
+  //std::cout << "resp :" << resp << std::endl;
   // rebind.
   if (status_code == 403) {
     // parse status_code
@@ -151,6 +163,18 @@ int iot::OtaClient::AuthDevice(const std::string &id_data,
   return 0;
 }
 
+std::string iot::OtaClient::get_device_id()
+{
+    std::stringstream buffer;
+    std::ifstream in("./device_id.txt");
+    buffer << in.rdbuf();
+    device_id_ = buffer.str();
+    std::vector<std::string> result= iot::HobotUtils::split(device_id_,"/");
+    std::string id = result[1].substr(0, result[1].length()-2);
+    std::cout<<"The result:"<< id << std::endl;
+    return id;
+}
+
 int iot::OtaClient::ReportDeviceAttrs(const std::string &requestJson) {
   if (initd_ == false) {
     return static_cast<int>(ErrorCode::kInitError);
@@ -162,6 +186,7 @@ int iot::OtaClient::ReportDeviceAttrs(const std::string &requestJson) {
     std::cout << "ReportDeviceAttrs: no token!" << std::endl;
     return static_cast<int>(ErrorCode::kFailed);
   }
+
   if (VerifyJsonString(requestJson, errs) == false) {
     std::cout  << "ReportDeviceAttrs: json parse error!" << requestJson << ":"
          << errs << std::endl;
@@ -393,7 +418,69 @@ int iot::OtaClient::QueryUpdatorPackage(const std::string &artifactName,
   }
   return static_cast<int>(ErrorCode::kSuccess);
 }
+int iot::OtaClient::DownLoadMap(std::string map_id) {
+  // rebind.
+  if (initd_ == false) {
+    return static_cast<int>(ErrorCode::kInitError);
+  }
 
+  HttpClient client;
+  long status_code = 0;
+  std::string resp, map_data;
+  std::vector<std::string> curl_headers;
+  std::string curl_header = "Authorization: Bearer " + auth_token_;
+  curl_headers.push_back("Content-Type: application/json");
+  curl_headers.push_back(curl_header);
+  std::string url = base_url_ + "/map/" + map_id;
+  client.set_curl_headers(curl_headers);
+  //int ret = client.HttpsGet(url, kCaPath, resp, &status_code);
+  int ret = client.HttpGet(url, resp, &status_code);
+  if (ret == 0 && status_code == 401) {
+    return static_cast<int>(ErrorCode::kUnauthorized);
+  }
+  if (ret == 0 && status_code == 204) {
+    return static_cast<int>(ErrorCode::kNoContent);
+  }
+  if (ret == 0 && status_code == 200) {
+      std::string errs,xml;
+      Json::CharReaderBuilder builder;
+      builder["collectComments"] = false;
+      std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
+      Json::Value root;  // 'root' will contain the root value after parsing.
+      if (!reader->parse(resp.c_str(), resp.c_str() + resp.length(), &root,
+                         &errs)) {
+        std::cout << "download map error resp failed." << std::endl;
+        std::cout << resp.c_str() << std::endl;
+        return static_cast<int>(ErrorCode::kJsonFormatError);
+      }
+      if (root.isMember("code")){
+        if(root["code"].asInt() == 1){
+          map_data = root["data"].asCString();
+          //printf("szie = %d\n", map_data.size());
+          xml = iot::HobotUtils::Base64Decode(map_data);
+          //printf("decode : %s\n", xml.c_str());        
+        }else{
+          std::cout << "error message: " << root["message"].asCString() << std::endl;
+        }
+      } else {
+        std::cout << "Response json property missing `code`" << std::endl;
+        return static_cast<int>(ErrorCode::kServerError);
+      }
+
+    // sotre token to file system.
+    std::string filePath = authfile_path_ + map_id + ".xml";
+    std::ofstream ofile(filePath);
+    if (ofile.is_open()) {
+      //ofile.wirte(map_data.c_str(), root.toStyledString().size());
+      ofile << xml;
+    }
+    ofile.close();
+    std::cout << "donwload map :" << filePath << "      ok!" << std::endl;
+    return static_cast<int>(ErrorCode::kSuccess);
+  }
+  std::cout << resp.c_str() << std::endl;
+  return static_cast<int>(ErrorCode::kFailed);
+}
 int iot::OtaClient::DownLoadUpdatorPackage(const std::string &localPath,
                                            DownloadCallback *cb, void *pParam) {
   if (initd_ == false) {

@@ -20,7 +20,7 @@ class OtaClient {
    * @param baseUrl,云端URL地址
    */
   int Init(const std::string &downLoadDir, const std::string &authInfoStoreDir,
-           const std::string &baseUrl);
+           const std::string &baseUrl, const std::string &imei);
 
   ~OtaClient();
   /*
@@ -107,6 +107,11 @@ class OtaClient {
   * query version
   */
   int QueryServerVersion();
+  /*
+  * download map data
+  */
+  int DownLoadMap(std::string map_id) ;
+  
  private:
   int AuthDevice(const std::string &idData, const std::string &pubKey,
                  const std::string &priKey, const std::string &tenantToken,
@@ -118,9 +123,10 @@ class OtaClient {
   int GetRsaKeyPair(const std::string &endKey, std::string &priKey,
                     std::string &pubKey);
   int GetAuthToken();
-
+ public:
+  std::string get_device_id();
  private:
-  const std::string kBaseUrl = "https://42.62.85.21/api/devices/v1";
+  const std::string kBaseUrl = "https://10.10.108.64:50051/api/v1/device";
   const std::string kVersion = "/version";
   const std::string kAuth = "/authentication/auth_requests";
   const std::string kAttrs = "/inventory/device/attributes";
@@ -139,6 +145,7 @@ class OtaClient {
   std::string download_url_;
   std::string authfile_path_;
   std::string download_path_;
+  std::string imei_;
   bool initd_;
 };
 

@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   cv_bridge
+  autodrive_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -118,6 +119,7 @@ catkin_package(
 ## Your package locations should be listed before other locations
 include_directories(
   include/car_iot
+  include/car_iot/mqtt
   ${catkin_INCLUDE_DIRS}
   ${OPENSSL_INCLUDE_DIR}
 )
@@ -135,7 +137,7 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(${PROJECT_NAME}  src/main.cpp src/carmsg.pb.cpp  src/client_ws.hpp  
+add_executable(${PROJECT_NAME}  src/main.cpp src/MQTT_Client.cpp src/carmsg.pb.cpp  src/client_ws.hpp  
 								src/client_wss.hpp  src/crypto.hpp  src/hobot_utils.cpp  src/http_client.cpp  src/jsoncpp.cpp src/ota_client.cpp  src/status_code.hpp  src/utility.hpp
                 src/easyws_client.cpp src/easyhttp_client.cpp
 )
@@ -161,6 +163,10 @@ target_link_libraries(${PROJECT_NAME}
   crypto
   curl
   ssl
+  paho-mqtt3as
+  paho-mqtt3cs
+  paho-mqtt3a
+  paho-mqtt3c
 )
 
 #############

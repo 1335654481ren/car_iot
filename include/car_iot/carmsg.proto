@@ -1,60 +1,42 @@
 syntax = "proto2";
 package pbcar;
-
+ 
 /*message DeviceInfo{
-	 optional string device_id = 1;  //device id
-	 optional uint64 timestamp = 2; //timestamp when the first snapshot generate, unix timestamp formate, milliseconds
+     optional string device_id = 1;  //device id
+     optional uint64 timestamp = 2; //timestamp when the first snapshot generate, unix timestamp formate, milliseconds
 }*/
-
+ 
 message ImageUpload{
-	repeated bytes snapshot = 1; //jpeg image snapshots
-	optional uint64 timestamp = 2; //timestamp when the first snapshot generate, unix timestamp formate, milliseconds
-	optional string session = 3;  //session reflect this is a whole video
-	optional string sequence = 4;  // for identify according response
+      repeated bytes snapshot = 1; //jpeg image snapshots
+      optional uint64 timestamp = 2; //timestamp when the first snapshot generate, unix timestamp formate, milliseconds
+      optional string session = 3;  //session reflect this is a whole video
+      optional string sequence = 4;  // for identify according response
 }
-
+ 
 message LocInfo{
-	optional float x = 1;
-	optional float y = 2;
-	optional float z = 3;
-	optional float w = 4;	
+    optional float x = 1;
+    optional float y = 2;
+    optional float z = 3;
+    optional float w = 4;
+    optional float y = 5;
+    optional float p = 6;
+    optional float r = 7;  
+}
+ 
+message GnssInfo{
+    optional double latitude = 1;
+    optional double longitude = 2; 
 }
 
 message LocUpload{
-	repeated LocInfo location = 1;
-	optional uint64 timestamp = 2;
-	optional string sequence = 3;  // for identify according response
+    repeated LocInfo location = 1;
+    optional uint64 timestamp = 2;
+    optional string sequence = 3;  // for identify according response
 }
-
-message ServerResponse{
-	optional int32 status_code = 1;  //status_code =1 means success, otherwise failed
-	optional string desc = 2;  //error description
-	optional string sequence = 3;
-}
-
-/*download message from carserver to device*/
-message ServerCmd{
-      optional int32 cmd = 1;
-	  optional uint64 timestamp = 2;
-	  optional LocInfo start_point = 3;
-	  optional LocInfo end_point = 4;
-	  repeated int32   route = 5; // route guide
-	  optional string sequence = 6; // for identify according response
-}
-
-message DeviceResponse{
-	optional int32 status_code = 1;  //status_code =1 means success, otherwise failed
-	optional string desc = 2;  //error description
-	optional string sequence = 3; //for identify according response
-}
-
+ 
 message MessageWrapper {
-	/*upload message from device to carserver*/
+    /*upload message from device to carserver*/
      optional ImageUpload image_upload = 1;  //device upload image message
-	 optional LocUpload loc_upload = 2;      //device upload GPS  message
-	 optional ServerResponse  server_resp = 3;   //server Response message
-	
-	/*download message from carserver to device*/
-	 optional ServerCmd server_cmd = 4;  //server send cmd message
-	 optional DeviceResponse device_resp = 5; //device response message
+     optional LocUpload loc_upload = 2;      //device upload location  message
+     optional GnssInfo  gnss_upload = 3;    //device upload local gnss message
 }

@@ -4,13 +4,14 @@
 // http get/put/patch/post operations
 //
 #include "otacli/http_client.h"
-
+#include <stdio.h>
 #include <string.h>
 #include <iostream>
 #include <memory>
 #include <string>
 #include <thread>
-#include <vector>
+#include <vector> 
+#include <fstream>
 
 #include "otacli/ota_typedef.h"
 
@@ -36,6 +37,7 @@ iot::HttpClient::HttpClient() {
   curl_headers_ = NULL;
   proxy_host_ = "";
   proxy_host_ = "";
+  deal_header = false;
 }
 
 void iot::HttpClient::set_curl_proxy_host(const std::string &proxy_host) {
@@ -296,6 +298,31 @@ int iot::HttpClient::XferinfoCallback(void *pParam, curl_off_t dltotal,
   return 0;
 }
 
+void iot::HttpClient::dealwith_cookies(CURL *curl)
+{
+  CURLcode res;
+  struct curl_slist *cookies;
+  struct curl_slist *nc;
+  int i;
+ 
+  //printf("Cookies, curl knows:\n");
+  res = curl_easy_getinfo(curl, CURLINFO_COOKIELIST, &cookies);
+  if (res != CURLE_OK) {
+    fprintf(stderr, "Curl curl_easy_getinfo failed: %s\n", curl_easy_strerror(res));
+    exit(1);
+  }
+  nc = cookies, i = 1;
+  while (nc) {
+    printf("[%d]: %s\n", i, nc->data);
+    nc = nc->next;
+    i++;
+  }
+  if (i == 1) {
+    printf("(none)\n");
+  }
+  curl_slist_free_all(cookies);
+}
+
 int iot::HttpClient::CreateHttpTransport() {
   if (curl_ != NULL) {
     curl_easy_cleanup(curl_);
@@ -319,6 +346,7 @@ int iot::HttpClient::PerformHttpTransport(long *statusCode) {
         *statusCode >= 200 && *statusCode < 300) {
       std::cout << "done." << *statusCode << std::endl;
       ret = 0;
+      //dealwith_cookies(curl_);
       break;
     } else if (ret == CURLE_COULDNT_RESOLVE_HOST ||
                ret == CURLE_COULDNT_CONNECT ||
@@ -346,6 +374,30 @@ int iot::HttpClient::CleanupHttpTransport() {
   return static_cast<int>(ErrorCode::kSuccess);
 }
 
+static size_t iot::HttpClient::header_callback(char *buffer, size_t size,
+                              size_t nitems, void *userdata)
+{
+  /* received header is nitems * size long in 'buffer' NOT ZERO TERMINATED */
+  /* 'userdata' is set with CURLOPT_HEADERDATA */
+  std::string strr = buffer;
+  int pos = strr.find("Location");
+  if(pos != std::string::npos){
+    printf("get new id : %s\n", buffer);
+    std::string device_id = strr.substr(10);
+    std::ofstream ofile("./device_id.txt");
+    if (ofile.is_open()) {
+      ofile << device_id;
+    }
+    ofile.close();
+  }
+  return nitems * size;
+}
+int iot::HttpClient::SetDealHeader(bool flag)
+{
+    deal_header = flag;
+    //curl_easy_setopt_safe(curl_, CURLOPT_HEADERFUNCTION, header_callback);
+    //curl_easy_setopt_safe(curl_, CURLOPT_HEADER, true);
+}
 int iot::HttpClient::SetupHttpTransport(const std::string &url,
                                         const std::string &requestData,
                                         const std::string &cafilePath,
@@ -362,11 +414,13 @@ int iot::HttpClient::SetupHttpTransport(const std::string &url,
   curl_easy_setopt_safe(curl_, CURLOPT_FILETIME, 1);
   curl_easy_setopt_safe(curl_, CURLOPT_NOSIGNAL, 1);
   curl_easy_setopt_safe(curl_, CURLOPT_NOPROGRESS, 1);
-
+  if(deal_header){
+    curl_easy_setopt_safe(curl_, CURLOPT_HEADERFUNCTION, header_callback);
+    deal_header = false;
+  }
   curl_easy_setopt_safe(curl_, CURLOPT_TCP_NODELAY, 1);
   curl_easy_setopt_safe(curl_, CURLOPT_NETRC, CURL_NETRC_IGNORED);
   curl_easy_setopt_safe(curl_, CURLOPT_VERBOSE, 0);
-
   // transport options
   curl_easy_setopt_safe(curl_, CURLOPT_SSL_VERIFYPEER, 0);
   if (cafilePath.length() != 0) {
